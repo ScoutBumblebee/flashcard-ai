@@ -53,9 +53,6 @@ async def extract_text(file: UploadFile = File(...)):
 
 @app.post("/generate")
 async def generate_flashcards(request: GenerateRequest):
-    MAX_INPUT_CHARS = 12000
-    if len(request.text) > MAX_INPUT_CHARS:
-        request.text = request.text[:MAX_INPUT_CHARS]
     print("✅ /generate endpoint received request")
     print(f"📝 Text length: {len(request.text)} characters")
     print(f"⚙️ Difficulty: {request.difficulty}, Exam mode: {request.exam_mode}")
@@ -82,7 +79,7 @@ Mix these question types.
         # For very long texts (>5000 words), split into chunks
         text_length = len(request.text.split())
         
-        if text_length > 5000:
+        if text_length > 1500:
             print(f"⚠️ Large text detected ({text_length} words). Processing in chunks...")
             # Split into ~3000 word chunks
             words = request.text.split()
@@ -95,8 +92,8 @@ Mix these question types.
                 print(f"📦 Processing chunk {idx + 1}/{len(chunks)}")
                 
                 # Calculate cards per chunk
-                cards_for_chunk = max(5, int((len(chunk.split()) / text_length) * 
-                                            (text_length // 100)))  # Adaptive based on chunk size
+                cards_for_chunk = max(8, len(chunk.split()) // 120)
+                print(f"Chunk words: {len(chunk.split())}, Cards target: {cards_for_chunk}")
                 
                 prompt = f"""You are an expert flashcard generator.
 
