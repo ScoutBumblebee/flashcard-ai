@@ -1,0 +1,35 @@
+/* Global fixes for unwanted UI elements */
+
+/* Hide any hamburger menu or default icons */
+button:empty,
+div:empty,
+span:empty {
+  display: none !important;
+}
+
+/* Remove default React icons */
+#root > button:first-child,
+body > button:first-child {
+  display: none !important;
+}
+
+/* Ensure clean body */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Hide any floating UI elements that might appear */
+body > div:not(#root),
+body > button,
+body > span {
+  display: none !important;
+}
+
+/* Make sure root takes full space */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+}
