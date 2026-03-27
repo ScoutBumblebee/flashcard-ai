@@ -100,7 +100,7 @@ function FlashcardApp({ onBackHome }) {
     formData.append('file', file);
 
     try {
-      const res = await fetch("https://multiple-elephant-laugh-sean.trycloudflare.com/extract-text", {
+      const res = await fetch("https://flashcard-backend.onrender.com/extract-text", {
         method: "POST",
         body: formData
       });
@@ -133,7 +133,7 @@ function FlashcardApp({ onBackHome }) {
     }, 45000);
 
     try {
-      const res = await fetch("https://multiple-elephant-laugh-sean.trycloudflare.com/generate", {
+      const res = await fetch("https://flashcard-backend.onrender.com/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
