@@ -6,10 +6,6 @@ import json
 import PyPDF2
 import docx
 from io import BytesIO
-import os
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 app = FastAPI()
 
@@ -57,6 +53,9 @@ async def extract_text(file: UploadFile = File(...)):
 
 @app.post("/generate")
 async def generate_flashcards(request: GenerateRequest):
+    MAX_INPUT_CHARS = 12000
+    if len(request.text) > MAX_INPUT_CHARS:
+        request.text = request.text[:MAX_INPUT_CHARS]
     print("✅ /generate endpoint received request")
     print(f"📝 Text length: {len(request.text)} characters")
     print(f"⚙️ Difficulty: {request.difficulty}, Exam mode: {request.exam_mode}")
@@ -120,24 +119,22 @@ CRITICAL: Return ONLY a valid JSON array, nothing else:
 No markdown, no code blocks, no extra text - ONLY the JSON array."""
 
                 response = requests.post(
-                    GROQ_URL,
-                    headers={
-                        "Authorization": f"Bearer {GROQ_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
+                    "http://localhost:11434/api/generate",
                     json={
-                        "model": "llama3-8b-8192",
-                        "messages": [
-                            {"role": "user", "content": prompt}
-                        ],
-                        "temperature": 0.7
-                    },
-                    timeout=120
+                        "model": "llama3.1:8b",
+                        "prompt": prompt,
+                        "stream": False
+                    }
                 )
+
+                if response.status_code != 200:
+                    print(f"Status: {response.status_code}")
+                    print(f"Response: {response.text}")
+                    return {"error": "Ollama API error"}
 
                 if response.status_code == 200:
                     data = response.json()
-                    response_text = data["choices"][0]["message"]["content"].strip()
+                    response_text = data.get("response", "").strip()
                     
                     # Clean and parse
                     if "```json" in response_text:
@@ -197,32 +194,27 @@ CRITICAL: Return ONLY a valid JSON array, nothing else:
 
 No markdown, no code blocks, no extra text - ONLY the JSON array."""
 
-            print("🤖 Sending request to Groq...")
+            print("🤖 Sending request to Ollama...")
             
             response = requests.post(
-                GROQ_URL,
-                headers={
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                },
+                "http://localhost:11434/api/generate",
                 json={
-                    "model": "llama3-8b-8192",
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.7
-                },
-                timeout=120
+                    "model": "llama3.1:8b",
+                    "prompt": prompt,
+                    "stream": False
+                }
             )
 
-            print(f"📡 Groq response status: {response.status_code}")
+            print(f"📡 Ollama response status: {response.status_code}")
 
             if response.status_code != 200:
-                print("❌ Groq returned error status")
-                return {"error": "Groq API error. Check your API key."}
+                print("❌ Ollama returned error status")
+                print(f"Status: {response.status_code}")
+                print(f"Response: {response.text}")
+                return {"error": "Ollama API error"}
 
             data = response.json()
-            response_text = data["choices"][0]["message"]["content"].strip()
+            response_text = data.get("response", "").strip()
             
             print(f"📄 Raw response length: {len(response_text)} chars")
             print(f"🔍 First 200 chars: {response_text[:200]}")
@@ -265,9 +257,9 @@ No markdown, no code blocks, no extra text - ONLY the JSON array."""
             print(f"✅ Successfully generated {len(flashcards)} flashcards")
             return {"flashcards": flashcards}
 
-    except requests.exceptions.ConnectionError:
-        print("❌ Cannot connect to Groq")
-        return {"error": "Groq API error. Check your API key."}
+    except requests.exceptions.ConnectionError as e:
+        print(f"❌ Cannot connect to Ollama: {e}")
+        return {"error": f"Generation failed: {str(e)}"}
     
     except requests.exceptions.Timeout:
         print("❌ Request timed out")
@@ -284,5 +276,5 @@ No markdown, no code blocks, no extra text - ONLY the JSON array."""
 if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting FastAPI server...")
-    print("📋 Make sure your Groq API key is configured.")
+    print("📋 Make sure Ollama is running locally on port 11434.")
     uvicorn.run(app, host="127.0.0.1", port=8000)

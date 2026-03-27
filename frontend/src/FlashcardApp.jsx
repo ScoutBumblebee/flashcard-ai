@@ -100,7 +100,8 @@ function FlashcardApp({ onBackHome }) {
     formData.append('file', file);
 
     try {
-      const res = await fetch("https://flashcard-backend-1xu9.onrender.com/extract-text", {
+      // Using local FastAPI backend
+      const res = await fetch("https://filed-beth-lit-clara.trycloudflare.com/extract-text", {
         method: "POST",
         body: formData
       });
@@ -133,7 +134,8 @@ function FlashcardApp({ onBackHome }) {
     }, 45000);
 
     try {
-      const res = await fetch("https://flashcard-backend-1xu9.onrender.com/generate", {
+      // Using local FastAPI backend
+      const res = await fetch("https://filed-beth-lit-clara.trycloudflare.com/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
