@@ -259,7 +259,16 @@ function FlashcardApp({ onBackHome }) {
     setEditingIndex(null);
   };
 
+  function getCardType(card) {
+    if (card.options) return "mcq";
+    if (card.answer === "True" || card.answer === "False") return "true_false";
+    if (card.question.includes("____")) return "fill_blank";
+    return "short";
+  }
+
   const displayCards = isShuffled ? shuffledCards : cards;
+  const currentCard = displayCards[studyIndex];
+  const type = currentCard ? getCardType(currentCard) : "short";
 
   useEffect(() => {
     if (!studyMode) return;
@@ -903,8 +912,55 @@ function FlashcardApp({ onBackHome }) {
                     QUESTION
                   </div>
                   <div style={{ fontSize: 24, lineHeight: 1.4 }}>
-                    {displayCards[studyIndex].question}
+                    {currentCard.question}
                   </div>
+                  {type === "mcq" && (
+                    <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
+                      {currentCard.options.map((option, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            padding: "12px 14px",
+                            borderRadius: 12,
+                            background: "rgba(255,255,255,0.75)",
+                            border: "1px solid rgba(0,0,0,0.08)",
+                            fontSize: 17
+                          }}
+                        >
+                          {String.fromCharCode(65 + index)}. {option}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {type === "true_false" && (
+                    <div
+                      style={{
+                        marginTop: 20,
+                        fontSize: 18,
+                        opacity: 0.75,
+                        letterSpacing: 0.6
+                      }}
+                    >
+                      True / False
+                    </div>
+                  )}
+                  {type === "fill_blank" && (
+                    <div
+                      style={{
+                        marginTop: 20,
+                        display: "inline-block",
+                        minWidth: 180,
+                        padding: "10px 14px",
+                        borderRadius: 12,
+                        background: "rgba(255,255,255,0.72)",
+                        border: "2px dashed rgba(0,0,0,0.15)",
+                        color: "rgba(0,0,0,0.45)",
+                        fontSize: 16
+                      }}
+                    >
+                      Type your answer...
+                    </div>
+                  )}
                 </div>
 
                 <div
@@ -925,9 +981,37 @@ function FlashcardApp({ onBackHome }) {
                   <div style={{ opacity: 0.5, fontSize: 12, marginBottom: 16 }}>
                     ANSWER
                   </div>
-                  <div style={{ fontSize: 22, lineHeight: 1.4 }}>
-                    {displayCards[studyIndex].answer}
-                  </div>
+                  {type === "mcq" ? (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {currentCard.options.map((option, index) => {
+                        const isCorrect = option === currentCard.answer;
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              padding: "12px 14px",
+                              borderRadius: 12,
+                              background: isCorrect
+                                ? "linear-gradient(180deg, #dff6df, #c5edc7)"
+                                : "rgba(255,255,255,0.72)",
+                              border: isCorrect
+                                ? "1px solid rgba(70, 140, 70, 0.35)"
+                                : "1px solid rgba(0,0,0,0.08)",
+                              fontSize: 17,
+                              fontWeight: isCorrect ? 700 : 400
+                            }}
+                          >
+                            {String.fromCharCode(65 + index)}. {option}
+                            {isCorrect ? "  ✓" : ""}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 22, lineHeight: 1.4 }}>
+                      {type === "fill_blank" ? `Blank: ${currentCard.answer}` : currentCard.answer}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

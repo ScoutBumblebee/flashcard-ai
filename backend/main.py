@@ -110,10 +110,35 @@ STUDY MATERIAL (Part {idx + 1} of {len(chunks)}):
 
 TASK: Generate approximately {cards_for_chunk} flashcards from this section.
 
+You MUST include a mix of different question types:
+- At least 20% multiple choice questions
+- At least 20% true/false questions
+- At least 20% fill-in-the-blank questions
+- The rest can be short answer
+
+Do NOT generate only one type of question. A mix is REQUIRED.
+
+Use these EXACT JSON formats:
+For MCQ:
+{{"question": "...", "options": ["A", "B", "C", "D"], "answer": "correct option"}}
+
+For True/False:
+{{"question": "...", "answer": "True"}}
+or
+{{"question": "...", "answer": "False"}}
+
+For Fill in the blank:
+{{"question": "The capital of France is ____.", "answer": "Paris"}}
+
+For Short Answer:
+{{"question": "...", "answer": "..."}}
+
 CRITICAL: Return ONLY a valid JSON array, nothing else:
 [
   {{"question": "What is X?", "answer": "X is..."}},
-  {{"question": "Explain Y", "answer": "Y means..."}}
+  {{"question": "Which option describes Y correctly?", "options": ["A", "B", "C", "D"], "answer": "B"}},
+  {{"question": "Y is always classified as Z.", "answer": "True"}},
+  {{"question": "The process of photosynthesis occurs in ____.", "answer": "chloroplasts"}}
 ]
 
 No markdown, no code blocks, no extra text - ONLY the JSON array."""
@@ -186,10 +211,35 @@ Cover ALL key concepts, definitions, important facts, and explanations.
 
 CRITICAL: Ensure EVERY flashacrd has a complete, non-empty and reasonable answer.
 
+You MUST include a mix of different question types:
+- At least 20% multiple choice questions
+- At least 20% true/false questions
+- At least 20% fill-in-the-blank questions
+- The rest can be short answer
+
+Do NOT generate only one type of question. A mix is REQUIRED.
+
+Use these EXACT JSON formats:
+For MCQ:
+{{"question": "...", "options": ["A", "B", "C", "D"], "answer": "correct option"}}
+
+For True/False:
+{{"question": "...", "answer": "True"}}
+or
+{{"question": "...", "answer": "False"}}
+
+For Fill in the blank:
+{{"question": "The capital of France is ____.", "answer": "Paris"}}
+
+For Short Answer:
+{{"question": "...", "answer": "..."}}
+
 CRITICAL: Return ONLY a valid JSON array, nothing else:
 [
   {{"question": "What is X?", "answer": "X is..."}},
-  {{"question": "Explain Y", "answer": "Y means..."}}
+  {{"question": "Which option describes Y correctly?", "options": ["A", "B", "C", "D"], "answer": "B"}},
+  {{"question": "Y is always classified as Z.", "answer": "True"}},
+  {{"question": "The process of photosynthesis occurs in ____.", "answer": "chloroplasts"}}
 ]
 
 No markdown, no code blocks, no extra text - ONLY the JSON array."""
