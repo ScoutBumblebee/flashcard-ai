@@ -101,7 +101,7 @@ function FlashcardApp({ onBackHome }) {
 
     try {
       // Using local FastAPI backend
-      const res = await fetch("https://filed-beth-lit-clara.trycloudflare.com/extract-text", {
+      const res = await fetch("https://marble-spider-politicians-agreement.trycloudflare.com/extract-text", {
         method: "POST",
         body: formData
       });
@@ -135,7 +135,7 @@ function FlashcardApp({ onBackHome }) {
 
     try {
       // Using local FastAPI backend
-      const res = await fetch("https://filed-beth-lit-clara.trycloudflare.com/generate", {
+      const res = await fetch("https://marble-spider-politicians-agreement.trycloudflare.com/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
