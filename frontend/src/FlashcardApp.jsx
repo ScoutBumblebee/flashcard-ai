@@ -39,6 +39,7 @@ function SkeletonCard() {
 }
 
 function FlashcardApp({ onBackHome }) {
+  const BACKEND_URL = "https://entry-upon-savannah-cheapest.trycloudflare.com";
   const [text, setText] = useState("");
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -101,7 +102,7 @@ function FlashcardApp({ onBackHome }) {
 
     try {
       // Using local FastAPI backend
-      const res = await fetch("https://marble-spider-politicians-agreement.trycloudflare.com/extract-text", {
+      const res = await fetch(`${BACKEND_URL}/extract-text`, {
         method: "POST",
         body: formData
       });
@@ -135,7 +136,7 @@ function FlashcardApp({ onBackHome }) {
 
     try {
       // Using local FastAPI backend
-      const res = await fetch("https://marble-spider-politicians-agreement.trycloudflare.com/generate", {
+      const res = await fetch(`${BACKEND_URL}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
