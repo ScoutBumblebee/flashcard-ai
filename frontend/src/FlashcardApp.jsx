@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 function SkeletonCard() {
   return (
@@ -39,7 +39,7 @@ function SkeletonCard() {
 }
 
 function FlashcardApp({ onBackHome }) {
-  const BACKEND_URL = "https://ingredients-march-bowling-regards.trycloudflare.com";
+  const BACKEND_URL = "https://temperature-carlos-festival-opposition.trycloudflare.com";
   const [text, setText] = useState("");
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -59,6 +59,38 @@ function FlashcardApp({ onBackHome }) {
   const [examMode, setExamMode] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [showEncouragement, setShowEncouragement] = useState(false);
+  const [currentChunk, setCurrentChunk] = useState(0);
+  const [totalChunks, setTotalChunks] = useState(0);
+  const [recentCardIds, setRecentCardIds] = useState([]);
+  const abortControllerRef = useRef(null);
+  const cardIdCounterRef = useRef(0);
+
+  const isNearBottom = () => {
+    const scrollOffset = window.innerHeight + window.scrollY;
+    const threshold = document.body.offsetHeight - 220;
+    return scrollOffset >= threshold;
+  };
+
+  const createCardWithId = (card) => ({
+    ...card,
+    __cardId: `card-${cardIdCounterRef.current += 1}`
+  });
+
+  const markNewCards = (newCards) => {
+    const newCardIds = newCards.map((card) => card.__cardId).filter(Boolean);
+    if (newCardIds.length === 0) return;
+
+    setRecentCardIds((prev) => [...prev, ...newCardIds]);
+    setTimeout(() => {
+      setRecentCardIds((prev) => prev.filter((id) => !newCardIds.includes(id)));
+    }, 1400);
+  };
+
+  const cancelGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   const uploadDeck = (event) => {
     const file = event.target.files[0];
@@ -101,33 +133,46 @@ function FlashcardApp({ onBackHome }) {
     formData.append('file', file);
 
     try {
-      // Using local FastAPI backend
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
       const res = await fetch(`${BACKEND_URL}/extract-text`, {
         method: "POST",
-        body: formData
+        body: formData,
+        signal: controller.signal
       });
+      clearTimeout(timeout);
       const data = await res.json();
       if (data.error) {
         setError(data.error);
       } else {
         setText(data.text || "");
       }
-    } catch {
-      setError("Could not extract text. Make sure backend is running.");
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setError("Request timed out. Backend may be offline.");
+      } else {
+        setError("Could not extract text. Make sure backend is running.");
+      }
     }
   };
 
   const generateFlashcards = async () => {
+    if (loading) return;
+
     if (text.trim().length < 20) {
       setError("Please enter more text.");
       return;
     }
 
+    abortControllerRef.current = new AbortController();
     setLoading(true);
     setError("");
     setCards([]);
-    setStatusText("Extracting key concepts");
+    setStatusText("Splitting text into chunks...");
     setShowEncouragement(false);
+    setCurrentChunk(0);
+    setTotalChunks(0);
+    setRecentCardIds([]);
 
     // Show encouragement message after 45 seconds
     const encouragementTimer = setTimeout(() => {
@@ -135,34 +180,139 @@ function FlashcardApp({ onBackHome }) {
     }, 45000);
 
     try {
-      // Using local FastAPI backend
-      const res = await fetch(`${BACKEND_URL}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          difficulty,
-          exam_mode: examMode
-        })
-      });
+      const chunkTargetLength = 1000;
+      const chunkMinLength = 800;
+      const words = text.trim().split(/\s+/);
+      const chunks = [];
+      let currentChunk = "";
 
-      const data = await res.json();
-
-      clearTimeout(encouragementTimer);
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setCards(data.flashcards || []);
+      for (const word of words) {
+        const nextChunk = currentChunk ? `${currentChunk} ${word}` : word;
+        if (nextChunk.length > chunkTargetLength && currentChunk.length >= chunkMinLength) {
+          chunks.push(currentChunk);
+          currentChunk = word;
+        } else {
+          currentChunk = nextChunk;
+        }
       }
-    } catch {
-      clearTimeout(encouragementTimer);
-      setError("Could not connect to backend.");
-    }
 
-    setLoading(false);
-    setStatusText("");
-    setShowEncouragement(false);
+      if (currentChunk) {
+        chunks.push(currentChunk);
+      }
+
+      const chunkErrors = [];
+      setTotalChunks(chunks.length);
+
+      for (let i = 0; i < chunks.length; i += 1) {
+        if (abortControllerRef.current?.signal.aborted) {
+          setStatusText("Generation cancelled");
+          break;
+        }
+
+        setCurrentChunk(i + 1);
+        setStatusText(`Processing chunk ${i + 1} of ${chunks.length}`);
+        const shouldAutoScroll = isNearBottom();
+
+        let chunkSucceeded = false;
+        try {
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            try {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 30000);
+              const signal = AbortSignal.any([
+                abortControllerRef.current.signal,
+                controller.signal
+              ]);
+
+              const res = await fetch(`${BACKEND_URL}/generate-chunk`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: chunks[i],
+                  chunk_index: i,
+                  total_chunks: chunks.length,
+                  difficulty,
+                  exam_mode: examMode
+                }),
+                signal
+              });
+
+              clearTimeout(timeout);
+              const data = await res.json();
+
+              if (data.error) {
+                throw new Error(data.error);
+              }
+
+              const newCards = (data.flashcards || []).map(createCardWithId);
+              setCards((prev) => [...prev, ...newCards]);
+              markNewCards(newCards);
+              if (shouldAutoScroll) {
+                window.scrollTo({
+                  top: document.body.scrollHeight,
+                  behavior: "smooth"
+                });
+              }
+              chunkSucceeded = true;
+              break;
+            } catch (err) {
+              if (attempt === 1) throw err;
+            }
+          }
+        } catch (err) {
+          if (err.name === "AbortError") {
+            if (abortControllerRef.current?.signal.aborted) {
+              setStatusText("Generation cancelled");
+              chunkSucceeded = true;
+            } else {
+              chunkErrors.push(`Chunk ${i + 1}: Request timed out. Backend may be offline.`);
+              setError("Request timed out. Backend may be offline.");
+            }
+          } else {
+            chunkErrors.push(`Chunk ${i + 1}: ${err.message || "Backend disconnected. Try restarting backend."}`);
+            setError("Backend disconnected. Try restarting backend.");
+          }
+        }
+
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
+        }
+
+        if (!chunkSucceeded) {
+          continue;
+        }
+
+        if (i < chunks.length - 1) {
+          await new Promise((res) => setTimeout(res, 300));
+          if (abortControllerRef.current?.signal.aborted) {
+            setStatusText("Generation cancelled");
+            break;
+          }
+        }
+      }
+
+      if (abortControllerRef.current?.signal.aborted) {
+        setError("");
+      } else {
+        setStatusText("All flashcards generated");
+      }
+
+      if (chunkErrors.length > 0 && !abortControllerRef.current?.signal.aborted) {
+        setError(`Some chunks failed: ${chunkErrors.join(" ")}`);
+      }
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setStatusText("Generation cancelled");
+        setError("");
+      } else {
+        setError("Backend disconnected. Try restarting backend.");
+      }
+    } finally {
+      clearTimeout(encouragementTimer);
+      abortControllerRef.current = null;
+      setLoading(false);
+      setShowEncouragement(false);
+    }
   };
 
   const saveDeck = () => {
@@ -423,6 +573,28 @@ function FlashcardApp({ onBackHome }) {
             transform: translateY(0);
           }
         }
+
+        @keyframes cardArrival {
+          0% {
+            opacity: 0;
+            transform: translateY(10px);
+            box-shadow: 0 0 0 rgba(255, 196, 140, 0);
+          }
+          35% {
+            opacity: 1;
+            transform: translateY(0);
+            box-shadow: 0 0 0 6px rgba(255, 196, 140, 0.28);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+          }
+        }
+
+        .new-card-arrival {
+          animation: cardArrival 1.2s ease-out;
+        }
       `}</style>
 
       <div
@@ -654,6 +826,24 @@ function FlashcardApp({ onBackHome }) {
               >
                 {loading ? "🤔 Analyzing…" : "✅ Generate Flashcards"}
               </button>
+
+              {loading && (
+                <button
+                  className="primary-btn"
+                  onClick={cancelGeneration}
+                  style={{
+                    padding: "14px 30px",
+                    fontSize: 16,
+                    borderRadius: 16,
+                    border: "none",
+                    background: "linear-gradient(180deg, #ffe6e6, #ffcccc)",
+                    cursor: "pointer",
+                    boxShadow: "0 12px 26px rgba(0,0,0,0.16)"
+                  }}
+                >
+                  ⏹ Cancel
+                </button>
+              )}
             </>
           )}
 
@@ -746,8 +936,42 @@ function FlashcardApp({ onBackHome }) {
           <div style={{ marginTop: 16 }}>
             <p style={{ fontSize: 16, opacity: 0.75, margin: 0 }}>
               {statusText}
-              <span className="loading-dots" />
+              {loading && <span className="loading-dots" />}
             </p>
+            {totalChunks > 0 && (
+              <>
+                <p
+                  style={{
+                    fontSize: 13,
+                    marginTop: 8,
+                    marginBottom: 8,
+                    opacity: 0.7
+                  }}
+                >
+                  Chunk {Math.min(currentChunk, totalChunks)} / {totalChunks}
+                </p>
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: 360,
+                    height: 10,
+                    borderRadius: 999,
+                    overflow: "hidden",
+                    background: "rgba(255,255,255,0.45)",
+                    boxShadow: "inset 0 1px 4px rgba(0,0,0,0.08)"
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${totalChunks === 0 ? 0 : (currentChunk / totalChunks) * 100}%`,
+                      height: "100%",
+                      background: "linear-gradient(90deg, #ffb066, #ff7a45)",
+                      transition: "width 0.3s ease"
+                    }}
+                  />
+                </div>
+              </>
+            )}
             <p
               style={{
                 fontSize: 13,
@@ -818,8 +1042,24 @@ function FlashcardApp({ onBackHome }) {
 
         {error && <p style={{ color: "#b00020", marginTop: 16 }}>{error}</p>}
 
-        {loading &&
-          Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        {loading && (
+          <div
+            style={{
+              marginTop: 20,
+              padding: 20,
+              borderRadius: 16,
+              background: "rgba(255,255,255,0.65)",
+              boxShadow: "0 10px 22px rgba(0,0,0,0.08)"
+            }}
+          >
+            <div style={{ fontSize: 18, marginBottom: 8 }}>
+              Generating flashcards<span className="loading-dots" />
+            </div>
+            <div style={{ fontSize: 14, opacity: 0.7 }}>
+              New cards will appear here as each chunk finishes.
+            </div>
+          </div>
+        )}
 
         {/* STUDY MODE */}
         {studyMode && cards.length > 0 && (
@@ -1068,7 +1308,7 @@ function FlashcardApp({ onBackHome }) {
         {!loading && !studyMode &&
           cards.map((card, index) => (
             <div
-              key={index}
+              key={card.__cardId || index}
               style={{
                 marginTop: 28
               }}
@@ -1156,7 +1396,7 @@ function FlashcardApp({ onBackHome }) {
               ) : (
                 <>
                   <div
-                    className="flashcard-wrap"
+                    className={`flashcard-wrap ${recentCardIds.includes(card.__cardId) ? "new-card-arrival" : ""}`}
                     style={{
                       perspective: "900px"
                     }}
