@@ -219,10 +219,7 @@ function FlashcardApp({ onBackHome }) {
             try {
               const controller = new AbortController();
               const timeout = setTimeout(() => controller.abort(), 30000);
-              const signal = AbortSignal.any([
-                abortControllerRef.current.signal,
-                controller.signal
-              ]);
+              const signal = controller.signal;
 
               const res = await fetch(`${BACKEND_URL}/generate-chunk`, {
                 method: "POST",
