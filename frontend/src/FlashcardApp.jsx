@@ -1040,22 +1040,25 @@ function FlashcardApp({ onBackHome }) {
         {error && <p style={{ color: "#b00020", marginTop: 16 }}>{error}</p>}
 
         {loading && (
-          <div
-            style={{
-              marginTop: 20,
-              padding: 20,
-              borderRadius: 16,
-              background: "rgba(255,255,255,0.65)",
-              boxShadow: "0 10px 22px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ fontSize: 18, marginBottom: 8 }}>
-              Generating flashcards<span className="loading-dots" />
+          <>
+            <div
+              style={{
+                marginTop: 20,
+                padding: 20,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.65)",
+                boxShadow: "0 10px 22px rgba(0,0,0,0.08)"
+              }}
+            >
+              <div style={{ fontSize: 18, marginBottom: 8 }}>
+                Generating flashcards<span className="loading-dots" />
+              </div>
+              <div style={{ fontSize: 14, opacity: 0.7 }}>
+                New cards will appear here as each chunk finishes.
+              </div>
             </div>
-            <div style={{ fontSize: 14, opacity: 0.7 }}>
-              New cards will appear here as each chunk finishes.
-            </div>
-          </div>
+            <SkeletonCard />
+          </>
         )}
 
         {/* STUDY MODE */}
