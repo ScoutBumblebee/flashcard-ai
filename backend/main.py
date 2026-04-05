@@ -79,11 +79,10 @@ Mix these question types.
         # For very long texts (>5000 words), split into chunks
         text_length = len(request.text.split())
         
-        if text_length > 1500:
+        if text_length > 2000:
             print(f"⚠️ Large text detected ({text_length} words). Processing in chunks...")
-            # Split into ~3000 word chunks
             words = request.text.split()
-            chunk_size = 1500
+            chunk_size = 800
             chunks = [' '.join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
             
             all_flashcards = []
