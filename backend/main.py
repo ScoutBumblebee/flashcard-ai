@@ -83,7 +83,7 @@ Mix these question types.
             print(f"⚠️ Large text detected ({text_length} words). Processing in chunks...")
             # Split into ~3000 word chunks
             words = request.text.split()
-            chunk_size = 3000
+            chunk_size = 1500
             chunks = [' '.join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
             
             all_flashcards = []
