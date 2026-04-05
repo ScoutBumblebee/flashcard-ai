@@ -39,7 +39,7 @@ function SkeletonCard() {
 }
 
 function FlashcardApp({ onBackHome }) {
-  const BACKEND_URL = "https://alcohol-knife-telephone-final.trycloudflare.com";
+  const BACKEND_URL = "https://ingredients-march-bowling-regards.trycloudflare.com";
   const [text, setText] = useState("");
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(false);
